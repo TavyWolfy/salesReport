@@ -1,12 +1,10 @@
 import csv
-import pycountry
-import re
-from iso3166 import countries, countries_by_name
 import sales_fix_iso
 
 
-FILE_PATH = '10000 Sales Records.csv'
-FILE_PATH_test = 'not_founded_countries.txt'
+ISO_FILE_PATH = '10000 Sales Records.csv'
+OUTPUT_FILE_PATH = 'SQL_Records.txt'
+
 
 def save_to_file(name, data):
     with open(name, "w") as f_obj:
@@ -15,72 +13,46 @@ def save_to_file(name, data):
 
 
 def csv_dict_reader(file_obj):
-    """
-    Read a CSV file using csv.DictReader
-    """
-    test_list = []
-    n_of_countries_in_csv = []
-    country_sales = {'country_iso_code': '', 'total_sales': 0 }
-    units_sold = 0
-    unit_price = 0
-    countries = []
+    sales_per_country = {}
     reader = csv.DictReader(file_obj, delimiter=',')
     for line in reader:
         #Достаем и переводим страну в формат ISO 3166
         country = line["Country"]
         country = country.strip()  # clear whitespaces
-
-        n_of_countries_in_csv.append(country)
-
         country_code = sales_fix_iso.find_country_code(country)
-        print('country_code: ', country_code, "for country: ", country)
-        test_list.append(country_code)
-        #if country_code:
+        # print('country_code: ', country_code, "for country: ", country)
+        #Достаем продажи
+        revenue = float(line["Total Revenue"])
+        if country_code in sales_per_country:
+            sales_per_country[country_code] += revenue
+        else:
+            sales_per_country[country_code] = revenue
 
-        #Если это первая в списке страна
-        #if countries
-        #print(country_code + "  for " + country)
-        #print(line["Units Sold"]),
-        #print(line["last_name"])
-    uniq_list = set(test_list)
-    n_of_countries_in_csv = set(n_of_countries_in_csv)
-    print('n_of_countries_in_csv: ', len(n_of_countries_in_csv))
-    print('n of codes found: ', len(test_list))
-    save_to_file("founded_countries.txt", uniq_list)
+    make_SQL_reports(sales_per_country)
+
 
 
 def read_csv():
-    with open(FILE_PATH, "r") as f_obj:
+    with open(ISO_FILE_PATH, "r") as f_obj:
 
         csv_dict_reader(f_obj)
 
 
-def read_txt():
-    with open(FILE_PATH_test, "r") as f:
-        #print(f.readlines())
-        lines = f.readlines()
-        for line in lines:
-            # Достаем и переводим страну в формат ISO 3166
-             print(convert_to_iso_2(line))
+def to_sql(country_iso_code, total_sales):
+    q = "INSERT INTO sales_reports (country_iso_code, total_sales) VALUES ({COUNTRY_ISO_CODE}, {TOTAL_SALES});".format(COUNTRY_ISO_CODE =country_iso_code, TOTAL_SALES=total_sales)
+    return q
 
-
-#def to_sql(country_iso_code, total_sales):
-
+def make_SQL_reports(codes_and_sales):
+    reports = []
+    for code, sale in codes_and_sales.items():
+        # print(code, '->', sale)
+        reports.append(to_sql(code, sale))
+    save_to_file(OUTPUT_FILE_PATH, reports)
 
 
 if __name__ == "__main__":
 
-    #print(convert_to_iso_2('Laos'))
-    #read_txt()
-    #print(pycountry.countries.search_fuzzy(' Republic of the Congo'))
-    #pycountry.countries.get(alpha_2='DE')
-    #print(convert_to_iso_2('Congo'))
     read_csv()
-    #for c in countries:
-        #findInDict("Republic of the Congo", c)
-    #print(countries.get("Iran"))
-    #print(findWholeWord("Congo")("Republic of the Congo"))
-    #print(fuzzySearch("Republic of the Congo"))
 
 
 
